@@ -30,6 +30,7 @@ from keras.engine.training import Model
 
 from tensorflow.keras.models import load_model
 
+
 face_detector = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 def image_preprocessor(new_image):
@@ -214,74 +215,83 @@ def calculate_face_attentiveness(video_path):
     blink_thresh = 0.45
     succ_frame = 2
     count_frame = 0
-  
+    blink_count = 0
+    mean_blink_rate = 15
+    std_blink_rate = 3
+    
     # Eye landmarks
     (L_start, L_end) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
-    (R_start, R_end) = face_utils.FACIAL_LANDMARKS_IDXS['right_eye']   
+    (R_start, R_end) = face_utils.FACIAL_LANDMARKS_IDXS['right_eye']
 
-    # Load pre-trained face and eye detectors
+    
+    # Initializing the Models for Landmark and 
+    # face Detection
     detector = dlib.get_frontal_face_detector()
-    predictor = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
+    landmark_predict = dlib.shape_predictor('./shape_predictor_68_face_landmarks.dat')
+    cam = cv2.VideoCapture(video_path)
 
-    # Open the video file
-    cap = cv2.VideoCapture(video_path)
+    # Gets duration of the video
+    fps = cam.get(cv2.CAP_PROP_FPS)
+    frame_count = cam.get(cv2.CAP_PROP_FRAME_COUNT)
+    seconds = frame_count / fps
+    minutes = seconds / 60
 
     while True:
-        if cap.get(cv2.CAP_PROP_POS_FRAMES) == cap.get(
-            cv2.CAP_PROP_FRAME_COUNT):
-            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        _, frame = cam.read()
+
+        if frame is None:
+            break  # Exit the loop when the video ends
+
+        frame = imutils.resize(frame, width=640)
   
-        else:
-            _, frame = cap.read()
-            frame = imutils.resize(frame, width=640)
+        # converting frame to gray scale to
+        # pass to detector
+        img_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+  
+        # detecting the faces
+        faces = detector(img_gray)
+        for face in faces:
+  
+            # landmark detection
+            shape = landmark_predict(img_gray, face)
+  
+            # converting the shape class directly
+            # to a list of (x,y) coordinates
+            shape = face_utils.shape_to_np(shape)
+  
+            # parsing the landmarks list to extract
+            # lefteye and righteye landmarks--#
+            lefteye = shape[L_start: L_end]
+            righteye = shape[R_start:R_end]
+  
+            # Calculate the EAR
+            left_EAR = calculate_EAR(lefteye)
+            right_EAR = calculate_EAR(righteye)
+  
+            # Avg of left and right eye EAR
+            avg = (left_EAR+right_EAR)/2
+            if avg < blink_thresh:
+                count_frame += 1  # incrementing the frame count
+            else:
+                if count_frame >= succ_frame:
+                    blink_count += 1
+                    
+                count_frame = 0
 
-            # Perform face detection
-            im_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = detector(im_gray)
+    cam.release()
+    cv2.destroyAllWindows()
 
-            for face in faces:
-    
-                # landmark detection
-                shape = predictor(im_gray, face)
-    
-                # converting the shape class directly
-                # to a list of (x,y) coordinates
-                shape = face_utils.shape_to_np(shape)
-    
-                # parsing the landmarks list to extract
-                # lefteye and righteye landmarks--#
-                lefteye = shape[L_start: L_end]
-                righteye = shape[R_start:R_end]
-    
-                # Calculate the EAR
-                left_EAR = calculate_EAR(lefteye)
-                right_EAR = calculate_EAR(righteye)
-    
-                # Avg of left and right eye EAR
-                avg = (left_EAR+right_EAR)/2
-                blink_count = 0
-                if avg < blink_thresh:
-                    count_frame += 1  # incrementing the frame count
-                else:
-                    if count_frame >= succ_frame:
-                        blink_count+=1
-                        cv2.putText(frame, 'Blink Detected:{}'.format(blink_count), (30, 30),
-                                    cv2.FONT_HERSHEY_DUPLEX, 1, (0, 200, 0), 1)
-                    else:
-                        count_frame = 0
-    
-            cv2.imshow("Video", frame)
-            if cv2.waitKey(5) & 0xFF == ord('q'):
-                break
-    
-        cap.release()
-        cv2.destroyAllWindows()
+    normalised_blink_rate = ((blink_count/minutes) - mean_blink_rate) / std_blink_rate
+
+    engagement = 100 - (((normalised_blink_rate+2)/5)*100)
+
+    return int(engagement)
 
 if __name__ == "__main__":
-    video_path = '/Users/adetounokunoren/Downloads/attentiveness.mp4'
+    video_path = './opemipo_attentiveness.mp4'
     test_image = cv2.imread('./opemipo_test.jpeg')
 
-    register_details('./opemipo_registration.mp4',"Opemipo","Okunoren")
-    print(identify_face(test_image,"Opemipo","Okunoren"))   
-    calculate_face_attentiveness(video_path)
+    #register_details('./opemipo_registration.mp4',"Opemipo","Okunoren")
+    #print(identify_face(test_image,"Opemipo","Okunoren"))   
+    print(calculate_face_attentiveness(video_path))
 
