@@ -226,3 +226,95 @@ class IdentifyFace(APIView):
         identity = class_list[test_preds[0].argmax()]
 
         return Response({"identity": identity}, status=status.HTTP_200_OK)
+
+class calculateAttentiveness(APIView):
+    def calculate_EAR(eye):
+  
+        # calculate the vertical distances
+        y1 = dist.euclidean(eye[1], eye[5])
+        y2 = dist.euclidean(eye[2], eye[4])
+    
+        # calculate the horizontal distance
+        x1 = dist.euclidean(eye[0], eye[3])
+    
+        # calculate the EAR
+        EAR = (y1+y2) / x1
+        return EAR
+
+    def post(self,request,format=None):
+        video = request.FILES['video']
+         # Variables
+        blink_thresh = 0.45
+        succ_frame = 2
+        count_frame = 0
+        blink_count = 0
+        mean_blink_rate = 15
+        std_blink_rate = 3
+        
+        # Eye landmarks
+        (L_start, L_end) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
+        (R_start, R_end) = face_utils.FACIAL_LANDMARKS_IDXS['right_eye']
+
+        
+        # Initializing the Models for Landmark and 
+        # face Detection
+        detector = dlib.get_frontal_face_detector()
+        landmark_predict = dlib.shape_predictor('./shape_predictor_68_face_landmarks.dat')
+        cam = cv2.VideoCapture(video.temporary_file_path())
+
+        # Gets duration of the video
+        fps = cam.get(cv2.CAP_PROP_FPS)
+        frame_count = cam.get(cv2.CAP_PROP_FRAME_COUNT)
+        seconds = frame_count / fps
+        minutes = seconds / 60
+
+        while True:
+            _, frame = cam.read()
+
+            if frame is None:
+                break  # Exit the loop when the video ends
+
+            frame = imutils.resize(frame, width=640)
+    
+            # converting frame to gray scale to
+            # pass to detector
+            img_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    
+            # detecting the faces
+            faces = detector(img_gray)
+            for face in faces:
+    
+                # landmark detection
+                shape = landmark_predict(img_gray, face)
+    
+                # converting the shape class directly
+                # to a list of (x,y) coordinates
+                shape = face_utils.shape_to_np(shape)
+    
+                # parsing the landmarks list to extract
+                # lefteye and righteye landmarks--#
+                lefteye = shape[L_start: L_end]
+                righteye = shape[R_start:R_end]
+    
+                # Calculate the EAR
+                left_EAR = calculate_EAR(lefteye)
+                right_EAR = calculate_EAR(righteye)
+    
+                # Avg of left and right eye EAR
+                avg = (left_EAR+right_EAR)/2
+                if avg < blink_thresh:
+                    count_frame += 1  # incrementing the frame count
+                else:
+                    if count_frame >= succ_frame:
+                        blink_count += 1
+                        
+                    count_frame = 0
+
+        cam.release()
+        cv2.destroyAllWindows()
+
+        normalised_blink_rate = ((blink_count/minutes) - mean_blink_rate) / std_blink_rate
+
+        engagement = 100 - (((normalised_blink_rate+2)/5)*100)
+
+        return Response({"engagement-percentage": int(engagement)}, status=status.HTTP_200_OK)
