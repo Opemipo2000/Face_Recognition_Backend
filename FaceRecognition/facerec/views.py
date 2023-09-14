@@ -10,6 +10,12 @@ import pickle
 import uuid
 import random
 from PIL import Image
+import dlib
+import imutils
+# for calculating dist b/w the eye landmarks
+from scipy.spatial import distance as dist
+# to get the landmark ids of the left and right eyes
+from imutils import face_utils
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
