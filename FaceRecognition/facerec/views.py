@@ -10,7 +10,7 @@ import pickle
 import uuid
 import random
 from PIL import Image
-import dlib
+#import dlib
 import imutils
 # for calculating dist b/w the eye landmarks
 from scipy.spatial import distance as dist
@@ -43,6 +43,7 @@ face_detector = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_front
 
     
 class RegisterFace(APIView):
+    permission_classes = []
     def post(self, request, *args, **kwargs):
         video = request.FILES['video']
         first_name = request.data.get('first_name')
@@ -184,6 +185,7 @@ class RegisterFace(APIView):
         
 
 class IdentifyFace(APIView):
+    permission_classes = []
     def image_preprocessor(self, new_image):
         face_detector = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         new_image = cv2.normalize(new_image, None, alpha=0, beta=1.5*255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
@@ -199,6 +201,7 @@ class IdentifyFace(APIView):
             return face
 
     def post(self, request, format=None):
+        permission_classes = []
         first_name = request.data.get('first_name')
         last_name = request.data.get('last_name')
         email = request.data.get('email')
@@ -234,6 +237,7 @@ class IdentifyFace(APIView):
         return Response({"identity": identity}, status=status.HTTP_200_OK)
 
 class calculateAttentiveness(APIView):
+    permission_classes = []
     def calculate_EAR(eye):
   
         # calculate the vertical distances

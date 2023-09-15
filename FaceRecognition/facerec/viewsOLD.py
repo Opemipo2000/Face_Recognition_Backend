@@ -7,7 +7,7 @@ import cv2
 import os
 import pickle
 from PIL import Image
-import dlib
+# import dlib
 import imutils
 # for calculating dist b/w the eye landmarks
 from scipy.spatial import distance as dist
@@ -293,4 +293,4 @@ if __name__ == "__main__":
 
     #register_details('./opemipo_registration.mp4',"Opemipo","Okunoren")
     #print(identify_face(test_image,"Opemipo","Okunoren"))   
-    print(calculate_face_attentiveness(video_path))
+    #print(calculate_face_attentiveness(video_path))
