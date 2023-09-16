@@ -268,9 +268,9 @@ class calculateAttentiveness(APIView):
         # Initializing the Models for Landmark and 
         # face Detection
         detector = dlib.get_frontal_face_detector()
-        file_path = os.path.abspath('path/to/shape_predictor_68_face_landmarks.dat')
+        file_path = os.path.abspath('./shape_predictor_68_face_landmarks.dat')
         landmark_predict = dlib.shape_predictor(file_path)
-        cam = cv2.VideoCapture(video)
+        cam = cv2.VideoCapture("{}".format(video))
 
         # Gets duration of the video
         fps = cam.get(cv2.CAP_PROP_FPS)
