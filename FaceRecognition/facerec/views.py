@@ -3,14 +3,13 @@ from django.shortcuts import render
 
 # Create your views here.
 import numpy as np
-import pandas as pd
 import cv2
 import os
 import pickle
 import uuid
 import random
 from PIL import Image
-#import dlib
+import dlib
 import imutils
 # for calculating dist b/w the eye landmarks
 from scipy.spatial import distance as dist
@@ -45,13 +44,13 @@ face_detector = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_front
 class RegisterFace(APIView):
     permission_classes = []
     def post(self, request, *args, **kwargs):
-        video = request.FILES['video']
+        video = request.data.get('video')
         first_name = request.data.get('first_name')
         last_name = request.data.get('last_name')
         email = request.data.get('email')
         user_id = uuid.uuid4()
         
-        vidcap = cv2.VideoCapture(video.temporary_file_path())
+        vidcap = cv2.VideoCapture(video)
         headshot_dir = f"Headshots/{first_name}_{last_name}/"
         headshot_img_dir = f"Headshots/{first_name}_{last_name}/images/{user_id}.jpg"
         os.makedirs(os.path.join(settings.MEDIA_ROOT, headshot_dir), exist_ok=True)
@@ -252,7 +251,7 @@ class calculateAttentiveness(APIView):
         return EAR
 
     def post(self,request,format=None):
-        video = request.FILES['video']
+        video = request.data.get('video')
          # Variables
         blink_thresh = 0.45
         succ_frame = 2
@@ -269,8 +268,9 @@ class calculateAttentiveness(APIView):
         # Initializing the Models for Landmark and 
         # face Detection
         detector = dlib.get_frontal_face_detector()
-        landmark_predict = dlib.shape_predictor('./shape_predictor_68_face_landmarks.dat')
-        cam = cv2.VideoCapture(video.temporary_file_path())
+        file_path = os.path.abspath('path/to/shape_predictor_68_face_landmarks.dat')
+        landmark_predict = dlib.shape_predictor(file_path)
+        cam = cv2.VideoCapture(video)
 
         # Gets duration of the video
         fps = cam.get(cv2.CAP_PROP_FPS)
