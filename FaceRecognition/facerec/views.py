@@ -7,7 +7,7 @@ import cv2
 import os
 import pickle
 import uuid
-import random
+import tempfile
 from PIL import Image
 import dlib
 import imutils
@@ -44,13 +44,21 @@ face_detector = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_front
 class RegisterFace(APIView):
     permission_classes = []
     def post(self, request, *args, **kwargs):
-        video = request.data.get('video')
+        video = request.FILES['blob_file']
         first_name = request.data.get('first_name')
         last_name = request.data.get('last_name')
         email = request.data.get('email')
         user_id = uuid.uuid4()
+
+        # Make sure to handle the path correctly in your code.
+        video_path = './{}_{}_registration_file'.format(first_name,last_name)
+
+        # Save the uploaded video to the specified path
+        with open(video_path, 'wb') as video_file:
+            for chunk in video.chunks():
+                video_file.write(chunk)
         
-        vidcap = cv2.VideoCapture(video)
+        vidcap = cv2.VideoCapture(video_path)
         headshot_dir = f"Headshots/{first_name}_{last_name}/"
         headshot_img_dir = f"Headshots/{first_name}_{last_name}/images/{user_id}.jpg"
         os.makedirs(os.path.join(settings.MEDIA_ROOT, headshot_dir), exist_ok=True)
@@ -237,7 +245,7 @@ class IdentifyFace(APIView):
 
 class calculateAttentiveness(APIView):
     permission_classes = []
-    def calculate_EAR(eye):
+    def calculate_EAR(self,eye):
   
         # calculate the vertical distances
         y1 = dist.euclidean(eye[1], eye[5])
@@ -250,8 +258,8 @@ class calculateAttentiveness(APIView):
         EAR = (y1+y2) / x1
         return EAR
 
-    def post(self,request,format=None):
-        video = request.data.get('video')
+    def post(self,request, *args, **kwargs):
+        video = request.FILES['blob_file']
          # Variables
         blink_thresh = 0.45
         succ_frame = 2
@@ -270,7 +278,16 @@ class calculateAttentiveness(APIView):
         detector = dlib.get_frontal_face_detector()
         file_path = os.path.abspath('./shape_predictor_68_face_landmarks.dat')
         landmark_predict = dlib.shape_predictor(file_path)
-        cam = cv2.VideoCapture("{}".format(video))
+
+        # Make sure to handle the path correctly in your code.
+        video_path = './meeting_file'
+
+        # Save the uploaded video to the specified path
+        with open(video_path, 'wb') as video_file:
+            for chunk in video.chunks():
+                video_file.write(chunk)
+
+        cam = cv2.VideoCapture(video_path)
 
         # Gets duration of the video
         fps = cam.get(cv2.CAP_PROP_FPS)
@@ -305,10 +322,12 @@ class calculateAttentiveness(APIView):
                 # lefteye and righteye landmarks--#
                 lefteye = shape[L_start: L_end]
                 righteye = shape[R_start:R_end]
+
+                print(lefteye)
     
                 # Calculate the EAR
-                left_EAR = calculate_EAR(lefteye)
-                right_EAR = calculate_EAR(righteye)
+                left_EAR = self.calculate_EAR(lefteye)
+                right_EAR = self.calculate_EAR(righteye)
     
                 # Avg of left and right eye EAR
                 avg = (left_EAR+right_EAR)/2
