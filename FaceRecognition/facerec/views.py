@@ -60,13 +60,13 @@ class RegisterFace(APIView):
         
         vidcap = cv2.VideoCapture(video_path)
         headshot_dir = f"Headshots/{first_name}_{last_name}/"
-        headshot_img_dir = f"Headshots/{first_name}_{last_name}/images/{user_id}.jpg"
+        headshot_img_dir = f"Headshots/{first_name}_{last_name}/image_{user_id}"
         os.makedirs(os.path.join(settings.MEDIA_ROOT, headshot_dir), exist_ok=True)
         def getFrame(sec):
             vidcap.set(cv2.CAP_PROP_POS_MSEC,sec*1000)
             hasFrames,image = vidcap.read()
             if hasFrames:
-                cv2.imwrite(os.path.join(settings.MEDIA_ROOT, headshot_img_dir), image)     # save frame as JPG file
+                cv2.imwrite(os.path.join(settings.MEDIA_ROOT, headshot_img_dir+str(count)+".jpg"), image)     # save frame as JPG file
             return hasFrames
         
         sec = 0
@@ -82,7 +82,7 @@ class RegisterFace(APIView):
         # images_dir = "./Headshots"
         current_id = 0
         label_ids = {}
-        for root, _, files in os.walk(headshot_img_dir):
+        for root, _, files in os.walk('./media/Headshots'):
             for file in files:
                 if (file.endswith("png") or file.endswith("jpg") or file.endswith("jpeg")):
                     # path of the image
@@ -128,7 +128,7 @@ class RegisterFace(APIView):
         
         train_datagen = ImageDataGenerator(preprocessing_function=preprocess_input)
 
-        train_generator = train_datagen.flow_from_directory(headshot_img_dir, target_size=(224,224), color_mode='rgb', batch_size=32, class_mode='categorical', shuffle=True)
+        train_generator = train_datagen.flow_from_directory('./media/Headshots', target_size=(224,224), color_mode='rgb', batch_size=32, class_mode='categorical', shuffle=True)
 
         NO_CLASSES = len(train_generator.class_indices.values())    
 
